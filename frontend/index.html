@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Facts Analyzer</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 20px; }
+        input[type="text"] { width: 100%; padding: 8px; margin: 5px 0; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; }
+        .pointer-item { display: flex; gap: 10px; margin-bottom: 10px; }
+        .results { margin-top: 30px; }
+        .result-item { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+        .snippet { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .add-btn { background: #007acc; color: white; }
+        .remove-btn { background: #ff4444; color: white; }
+        .submit-btn { background: #28a745; color: white; }
+        .loading { background: #ccc; color: white; }
+    </style>
+</head>
+<body>
+    <h1>PDF Facts Analyzer</h1>
+    
+    <form id="pdfForm">
+        <div class="form-group">
+            <label><strong>Upload PDF:</strong></label>
+            <input type="file" id="pdfFile" accept=".pdf" required style="display: block; margin-top: 5px;">
+        </div>
+
+        <div class="form-group">
+            <label><strong>Analysis Pointers:</strong></label>
+            <div id="pointersContainer">
+                <div class="pointer-item">
+                    <input type="text" value="List all dates" placeholder="Enter analysis pointer">
+                    <button type="button" class="remove-btn" onclick="removePointer(this)">Remove</button>
+                </div>
+                <div class="pointer-item">
+                    <input type="text" value="Who signed?" placeholder="Enter analysis pointer">
+                    <button type="button" class="remove-btn" onclick="removePointer(this)">Remove</button>
+                </div>
+                <div class="pointer-item">
+                    <input type="text" value="Total contract value?" placeholder="Enter analysis pointer">
+                    <button type="button" class="remove-btn" onclick="removePointer(this)">Remove</button>
+                </div>
+            </div>
+            <button type="button" class="add-btn" onclick="addPointer()">Add Pointer</button>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Analyze PDF</button>
+    </form>
+
+    <div id="loading" style="display: none; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7;">
+        <strong>Analyzing PDF... Please wait.</strong>
+    </div>
+    
+    <div id="error" style="color: red; display: none; padding: 10px; background: #ffe6e6; border: 1px solid #ff4444;"></div>
+    
+    <div id="results" class="results"></div>
+
+    <script>
+        function addPointer() {
+            const container = document.getElementById('pointersContainer');
+            const div = document.createElement('div');
+            div.className = 'pointer-item';
+            div.innerHTML = `
+                <input type="text" placeholder="Enter analysis pointer">
+                <button type="button" class="remove-btn" onclick="removePointer(this)">Remove</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function removePointer(button) {
+            if (document.querySelectorAll('.pointer-item').length > 1) {
+                button.parentElement.remove();
+            } else {
+                alert('You need at least one pointer');
+            }
+        }
+
+        document.getElementById('pdfForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('pdfFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Please select a PDF file');
+                return;
+            }
+
+            const pointers = Array.from(document.querySelectorAll('#pointersContainer input'))
+                .map(input => input.value.trim())
+                .filter(value => value);
+
+            if (pointers.length === 0) {
+                showError('Please add at least one analysis pointer');
+                return;
+            }
+
+            // Show demo results since backend might not be working
+            showDemoResults(file.name, pointers);
+        });
+
+        function showDemoResults(filename, pointers) {
+            showLoading(true);
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                const demoData = {
+                    filename: filename,
+                    results: pointers.map(pointer => ({
+                        pointer: pointer,
+                        rationale: "This is a demo response. Backend API would extract actual text from PDF.",
+                        snippets: ["Sample extracted text snippet 1", "Sample extracted text snippet 2"],
+                        page_numbers: [1, 2],
+                        character_offsets: [{start: 0, end: 10}, {start: 20, end: 30}]
+                    }))
+                };
+                
+                displayResults(demoData);
+                showLoading(false);
+            }, 1000);
+        }
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <h2>Analysis Results for: ${data.filename}</h2>
+                ${data.results.map((result, index) => `
+                    <div class="result-item">
+                        <h3>Pointer: "${result.pointer}"</h3>
+                        <p><strong>Rationale:</strong> ${result.rationale}</p>
+                        ${result.snippets.length > 0 ? `
+                            <h4>Found ${result.snippets.length} result(s):</h4>
+                            ${result.snippets.map((snippet, snippetIndex) => `
+                                <div class="snippet">
+                                    <p><strong>Snippet:</strong> ${snippet}</p>
+                                    <p><strong>Page:</strong> ${result.page_numbers[snippetIndex]}</p>
+                                    <p><strong>Position:</strong> ${result.character_offsets[snippetIndex].start} - ${result.character_offsets[snippetIndex].end}</p>
+                                </div>
+                            `).join('')}
+                        ` : '<p>No results found for this pointer.</p>'}
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('submitBtn').disabled = show;
+            document.getElementById('submitBtn').textContent = show ? 'Analyzing...' : 'Analyze PDF';
+            document.getElementById('submitBtn').className = show ? 'loading' : 'submit-btn';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
